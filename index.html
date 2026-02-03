@@ -5,182 +5,174 @@
 <title>Cine Flix HD</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- ✅ AdSense (UNA SOLA VEZ) -->
-<script async 
-  src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9698973471120203"
-  crossorigin="anonymous"></script>
-
-<!-- Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=G-ZRV1PVQLY8"></script>
-<script>
-window.dataLayer = window.dataLayer || [];
-function gtag(){dataLayer.push(arguments);}
-gtag('js', new Date());
-gtag('config', 'G-ZRV1PVQLY8');
-</script>
+<!-- AdSense -->
+<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9698973471120203" crossorigin="anonymous"></script>
 
 <style>
-body{margin:0;background:#000;color:#fff;font-family:Arial,sans-serif}
-header{background:#111;padding:12px;position:sticky;top:0;z-index:10}
-.logo{text-align:center;color:#e50914;font-size:24px;font-weight:bold}
-.search{padding:10px;display:flex;justify-content:center}
-.search input{
-width:90%;max-width:400px;padding:10px;
-border-radius:20px;border:none;outline:none
+body{
+margin:0;
+background:#000;
+color:#fff;
+font-family:Arial,sans-serif;
+overflow:hidden;
 }
-#movies{
-display:grid;
-grid-template-columns:repeat(auto-fill,minmax(150px,1fr));
-gap:12px;padding:15px
-}
-.card{
-background:#1c1c1c;border-radius:10px;
-overflow:hidden;cursor:pointer;transition:.2s
-}
-.card:hover{transform:scale(1.05)}
-.card img{width:100%;height:210px;object-fit:cover}
-.card p{text-align:center;font-size:14px;padding:6px}
 
-#ad-top,#ad-middle,#ad-bottom{text-align:center;margin:15px 0}
-
-#tv{
-position:fixed;inset:0;background:#000;
-display:none;flex-direction:column;
-justify-content:center;align-items:center;
-z-index:9999
+/* BIENVENIDA */
+#welcome{
+position:fixed;
+inset:0;
+background:#000;
+display:flex;
+flex-direction:column;
+justify-content:center;
+align-items:center;
+z-index:99999;
+text-align:center;
 }
-#player{width:100%;max-width:900px;height:55vh}
-.controls{margin-top:10px;display:flex;gap:10px}
+#welcome h1{color:#e50914}
+#welcome p{opacity:.8}
+#welcome.hide{display:none}
+
+/* VIDEO FEED */
+#feed{
+height:100vh;
+overflow-y:scroll;
+scroll-snap-type:y mandatory;
+}
+
+.video{
+height:100vh;
+display:flex;
+justify-content:center;
+align-items:center;
+scroll-snap-align:start;
+}
+
+iframe{
+width:100%;
+height:100%;
+border:none;
+}
+
+/* CONTROLES */
+.controls{
+position:fixed;
+right:10px;
+bottom:80px;
+z-index:10;
+display:flex;
+flex-direction:column;
+gap:10px;
+}
 .controls button{
-background:#e50914;border:none;padding:10px 20px;
-border-radius:6px;color:#fff;font-size:16px;cursor:pointer
-}
-
-@media(max-width:600px){
-#player{height:40vh}
-.logo{font-size:20px}
+background:#e50914;
+border:none;
+color:#fff;
+padding:10px;
+border-radius:50%;
+font-size:14px;
+cursor:pointer;
 }
 </style>
 </head>
 
 <body>
 
-<header>
-<div class="logo">🎬 Cine Flix HD</div>
-</header>
-
-<!-- 🔍 Buscador -->
-<div class="search">
-<input type="text" placeholder="Buscar películas..." onkeyup="searchMovie(this.value)">
+<!-- BIENVENIDA -->
+<div id="welcome">
+<h1>🎬 Cine Flix HD</h1>
+<p>Disfruta tráilers ilimitados<br>La reproducción comienza ahora</p>
 </div>
 
-<!-- 🔥 ANUNCIO SUPERIOR (autorelaxed) -->
-<div id="ad-top">
-<ins class="adsbygoogle"
-     style="display:block"
-     data-ad-format="autorelaxed"
-     data-ad-client="ca-pub-9698973471120203"
-     data-ad-slot="3415387702"></ins>
-<script>(adsbygoogle=window.adsbygoogle||[]).push({});</script>
-</div>
-
-<div id="movies"></div>
-
-<!-- 🔥 ANUNCIO IN-ARTICLE -->
-<div id="ad-middle">
-<ins class="adsbygoogle"
-     style="display:block;text-align:center"
-     data-ad-layout="in-article"
-     data-ad-format="fluid"
-     data-ad-client="ca-pub-9698973471120203"
-     data-ad-slot="9789224360"></ins>
-<script>(adsbygoogle=window.adsbygoogle||[]).push({});</script>
-</div>
-
-<div id="sentinel"></div>
-
-<!-- 🔥 ANUNCIO RESPONSIVE FOOTER -->
-<div id="ad-bottom">
-<ins class="adsbygoogle"
-     style="display:block"
-     data-ad-client="ca-pub-9698973471120203"
-     data-ad-slot="3725652545"
-     data-ad-format="auto"
-     data-full-width-responsive="true"></ins>
-<script>(adsbygoogle=window.adsbygoogle||[]).push({});</script>
-</div>
-
-<!-- 🎥 PLAYER -->
-<div id="tv">
-<div id="player"></div>
+<!-- CONTROLES -->
 <div class="controls">
-<button onclick="next()">⏭ Siguiente</button>
-<button onclick="closeTV()">❌ Cerrar</button>
-</div>
+<button onclick="toggleSound()">🔊</button>
 </div>
 
-<script src="https://www.youtube.com/iframe_api"></script>
+<!-- FEED DE VIDEOS -->
+<div id="feed"></div>
+
 <script>
 const OMDB="d58f0933";
 const TMDB="a75df45f5957e88b88043e6e9558b941";
-let page=1,playlist=[],index=0,player;
+let page=1,playlist=[],current=0,players=[],muted=true;
 
-function onYouTubeIframeAPIReady(){
-player=new YT.Player("player",{
-playerVars:{autoplay:1,controls:1,rel:0,mute:1,playsinline:1},
-events:{onStateChange:e=>{if(e.data===0)next();}}
-});
+/* BIENVENIDA */
+setTimeout(()=>{
+welcome.classList.add("hide");
+init();
+},3000);
+
+/* INICIO */
+async function init(){
+await load();
+playVideo(0);
+observeScroll();
 }
 
-function openTV(){tv.style.display="flex"}
-function closeTV(){tv.style.display="none";player.stopVideo()}
-
-function play(id){
-openTV();
-player.loadVideoById(id);
-}
-
-async function next(){
-index++;
-if(index>=playlist.length-1) await load();
-playTrailer(playlist[index]);
-}
-
-async function playTrailer(imdb){
-const f=await fetch(`https://api.themoviedb.org/3/find/${imdb}?api_key=${TMDB}&external_source=imdb_id`);
-const d=await f.json();
-if(!d.movie_results[0]) return next();
-const v=await fetch(`https://api.themoviedb.org/3/movie/${d.movie_results[0].id}/videos?api_key=${TMDB}`);
-const vd=await v.json();
-const t=vd.results.find(x=>x.site==="YouTube");
-t?play(t.key):next();
-}
-
-async function load(q="movie"){
-const r=await fetch(`https://www.omdbapi.com/?apikey=${OMDB}&s=${q}&page=${page}`);
+/* CARGAR MÁS PELÍCULAS */
+async function load(){
+const r=await fetch(`https://www.omdbapi.com/?apikey=${OMDB}&s=movie&page=${page}`);
 const d=await r.json();
 if(d.Response==="True"){
-d.Search.forEach(m=>{
+for(const m of d.Search){
 playlist.push(m.imdbID);
-const c=document.createElement("div");
-c.className="card";
-c.innerHTML=`<img src="${m.Poster}"><p>${m.Title}</p>`;
-c.onclick=()=>{index=playlist.indexOf(m.imdbID);playTrailer(m.imdbID)};
-movies.appendChild(c);
-});
+await createVideo(m.imdbID);
+}
 page++;
 }
 }
 
-function searchMovie(q){
-movies.innerHTML="";
-playlist=[];
-page=1;
-if(q.length>2) load(q);
+/* CREAR VIDEO */
+async function createVideo(imdb){
+const f=await fetch(`https://api.themoviedb.org/3/find/${imdb}?api_key=${TMDB}&external_source=imdb_id`);
+const d=await f.json();
+if(!d.movie_results[0]) return;
+const v=await fetch(`https://api.themoviedb.org/3/movie/${d.movie_results[0].id}/videos?api_key=${TMDB}`);
+const vd=await v.json();
+const t=vd.results.find(x=>x.site==="YouTube");
+if(!t) return;
+
+const div=document.createElement("div");
+div.className="video";
+div.innerHTML=`<iframe src="https://www.youtube.com/embed/${t.key}?autoplay=0&mute=1&controls=0&playsinline=1"></iframe>`;
+feed.appendChild(div);
+players.push(div.querySelector("iframe"));
 }
 
-new IntersectionObserver(e=>e[0].isIntersecting&&load()).observe(sentinel);
-window.onload=()=>load();
+/* REPRODUCIR VIDEO */
+function playVideo(i){
+players.forEach((p,index)=>{
+p.contentWindow.postMessage('{"event":"command","func":"stopVideo","args":""}',"*");
+});
+const iframe=players[i];
+iframe.src=iframe.src.replace("autoplay=0","autoplay=1");
+}
+
+/* SCROLL INFINITO */
+function observeScroll(){
+let observer=new IntersectionObserver(entries=>{
+entries.forEach(e=>{
+if(e.isIntersecting){
+current=[...feed.children].indexOf(e.target);
+playVideo(current);
+if(current>=players.length-2) load();
+}
+});
+},{threshold:.6});
+
+[...feed.children].forEach(v=>observer.observe(v));
+}
+
+/* SONIDO */
+function toggleSound(){
+muted=!muted;
+players.forEach(p=>{
+p.contentWindow.postMessage(
+`{"event":"command","func":"${muted?"mute":"unMute"}","args":""}`,"*"
+);
+});
+}
 </script>
 
 </body>
