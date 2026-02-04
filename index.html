@@ -5,73 +5,67 @@
 <title>Cine Flix HD</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-<!-- AdSense -->
-<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9698973471120203" crossorigin="anonymous"></script>
-
 <style>
-body{
-margin:0;
-background:#000;
-color:#fff;
-font-family:Arial,sans-serif;
-overflow:hidden;
-}
+body{margin:0;background:#000;color:#fff;font-family:Arial,sans-serif;overflow:hidden}
 
 /* BIENVENIDA */
 #welcome{
-position:fixed;
-inset:0;
-background:#000;
-display:flex;
-flex-direction:column;
-justify-content:center;
-align-items:center;
-z-index:99999;
-text-align:center;
+position:fixed;inset:0;background:#000;
+display:flex;flex-direction:column;
+justify-content:center;align-items:center;
+z-index:9999;text-align:center
 }
 #welcome h1{color:#e50914}
-#welcome p{opacity:.8}
 #welcome.hide{display:none}
 
-/* VIDEO FEED */
+/* FEED */
 #feed{
 height:100vh;
 overflow-y:scroll;
-scroll-snap-type:y mandatory;
+scroll-snap-type:y mandatory
 }
-
 .video{
 height:100vh;
-display:flex;
-justify-content:center;
-align-items:center;
 scroll-snap-align:start;
+position:relative
 }
-
-iframe{
-width:100%;
-height:100%;
-border:none;
-}
+iframe{width:100%;height:100%;border:none}
 
 /* CONTROLES */
-.controls{
+#controls{
 position:fixed;
-right:10px;
-bottom:80px;
+bottom:20px;
+left:50%;
+transform:translateX(-50%);
 z-index:10;
 display:flex;
-flex-direction:column;
 gap:10px;
+background:rgba(0,0,0,.6);
+padding:10px 15px;
+border-radius:20px;
+align-items:center
 }
-.controls button{
+#controls button{
 background:#e50914;
 border:none;
 color:#fff;
-padding:10px;
-border-radius:50%;
-font-size:14px;
-cursor:pointer;
+padding:8px 12px;
+border-radius:10px;
+cursor:pointer
+}
+#controls input{width:80px}
+
+/* LABEL AD */
+#ad-label{
+position:fixed;
+top:10px;
+left:10px;
+background:#e50914;
+padding:6px 12px;
+border-radius:12px;
+font-size:12px;
+display:none;
+z-index:10
 }
 </style>
 </head>
@@ -81,50 +75,62 @@ cursor:pointer;
 <!-- BIENVENIDA -->
 <div id="welcome">
 <h1>🎬 Cine Flix HD</h1>
-<p>Disfruta tráilers ilimitados<br>La reproducción comienza ahora</p>
+<p>Cargando trailers ilimitados…</p>
 </div>
+
+<div id="ad-label">Publicidad</div>
 
 <!-- CONTROLES -->
-<div class="controls">
-<button onclick="toggleSound()">🔊</button>
+<div id="controls">
+<button onclick="prev()">⏮</button>
+<button onclick="togglePlay()">⏯</button>
+<button onclick="next()">⏭</button>
+<button onclick="toggleMute()">🔊</button>
+<input type="range" min="0" max="100" value="0" oninput="setVolume(this.value)">
 </div>
 
-<!-- FEED DE VIDEOS -->
+<!-- FEED -->
 <div id="feed"></div>
 
 <script>
 const OMDB="d58f0933";
 const TMDB="a75df45f5957e88b88043e6e9558b941";
-let page=1,playlist=[],current=0,players=[],muted=true;
+
+/* ADS DE VIDEO */
+const ADS=["XGSy3_Czz8k","l482T0yNkeo"];
+
+let page=1,players=[],current=0,muted=true,paused=false;
+let loadTimer=null;
 
 /* BIENVENIDA */
 setTimeout(()=>{
 welcome.classList.add("hide");
 init();
-},3000);
+},2500);
 
 /* INICIO */
 async function init(){
 await load();
-playVideo(0);
-observeScroll();
+play(0);
+observe();
 }
 
-/* CARGAR MÁS PELÍCULAS */
+/* CARGA DE CONTENIDO */
 async function load(){
 const r=await fetch(`https://www.omdbapi.com/?apikey=${OMDB}&s=movie&page=${page}`);
 const d=await r.json();
 if(d.Response==="True"){
 for(const m of d.Search){
-playlist.push(m.imdbID);
-await createVideo(m.imdbID);
+await addTrailer(m.imdbID);
+if(players.length%5===0) addAd();
 }
 page++;
 }
 }
 
-/* CREAR VIDEO */
-async function createVideo(imdb){
+/* TRAILER */
+async function addTrailer(imdb){
+try{
 const f=await fetch(`https://api.themoviedb.org/3/find/${imdb}?api_key=${TMDB}&external_source=imdb_id`);
 const d=await f.json();
 if(!d.movie_results[0]) return;
@@ -132,55 +138,116 @@ const v=await fetch(`https://api.themoviedb.org/3/movie/${d.movie_results[0].id}
 const vd=await v.json();
 const t=vd.results.find(x=>x.site==="YouTube");
 if(!t) return;
+createVideo(t.key,false);
+}catch(e){}
+}
 
+/* ANUNCIO */
+function addAd(){
+const id=ADS[Math.floor(Math.random()*ADS.length)];
+createVideo(id,true);
+}
+
+/* CREAR VIDEO */
+function createVideo(id,isAd){
 const div=document.createElement("div");
 div.className="video";
-div.innerHTML=`<iframe src="https://www.youtube.com/embed/${t.key}?autoplay=0&mute=1&controls=0&playsinline=1"></iframe>`;
+div.dataset.ad=isAd;
+div.innerHTML=
+`<iframe src="https://www.youtube.com/embed/${id}?enablejsapi=1&autoplay=0&mute=1&controls=0&playsinline=1"></iframe>`;
 feed.appendChild(div);
 players.push(div.querySelector("iframe"));
 }
 
-/* REPRODUCIR VIDEO */
-function playVideo(i){
-players.forEach((p,index)=>{
-p.contentWindow.postMessage('{"event":"command","func":"stopVideo","args":""}',"*");
-});
+/* PLAY CON DETECTOR */
+function play(i){
+stopAll();
+current=i;
 const iframe=players[i];
-iframe.src=iframe.src.replace("autoplay=0","autoplay=1");
+showAdLabel();
+
+iframe.contentWindow.postMessage('{"event":"command","func":"playVideo","args":""}',"*");
+iframe.contentWindow.postMessage('{"event":"command","func":"mute","args":""}',"*");
+
+/* ⏱️ TIMEOUT: si no reproduce → skip */
+clearTimeout(loadTimer);
+loadTimer=setTimeout(()=>{
+console.warn("Video no responde, saltando…");
+next();
+},6000);
 }
 
-/* SCROLL INFINITO */
-function observeScroll(){
-let observer=new IntersectionObserver(entries=>{
+/* DETECCIÓN DE MENSAJES YOUTUBE */
+window.addEventListener("message",e=>{
+if(!e.data || typeof e.data!=="string") return;
+if(e.data.includes("onError")){
+console.warn("Error de YouTube detectado");
+next();
+}
+if(e.data.includes("onStateChange")){
+clearTimeout(loadTimer);
+}
+});
+
+/* CONTROLES */
+function stopAll(){
+players.forEach(p=>{
+p.contentWindow.postMessage('{"event":"command","func":"stopVideo","args":""}',"*");
+});
+}
+
+function next(){
+if(current<players.length-1){
+current++;
+feed.scrollTo({top:current*innerHeight,behavior:"smooth"});
+play(current);
+if(current>=players.length-3) load();
+}
+}
+
+function prev(){
+if(current>0){
+current--;
+feed.scrollTo({top:current*innerHeight,behavior:"smooth"});
+play(current);
+}
+}
+
+function togglePlay(){
+paused=!paused;
+players[current].contentWindow.postMessage(
+`{"event":"command","func":"${paused?"pauseVideo":"playVideo"}","args":""}`,"*");
+}
+
+function toggleMute(){
+muted=!muted;
+players[current].contentWindow.postMessage(
+`{"event":"command","func":"${muted?"mute":"unMute"}","args":""}`,"*");
+}
+
+function setVolume(v){
+players[current].contentWindow.postMessage(
+`{"event":"command","func":"setVolume","args":[${v}]}`,"*");
+}
+
+/* SCROLL */
+function observe(){
+let obs=new IntersectionObserver(entries=>{
 entries.forEach(e=>{
 if(e.isIntersecting){
 current=[...feed.children].indexOf(e.target);
-playVideo(current);
-if(current>=players.length-2) load();
+play(current);
 }
 });
-},{threshold:.6});
-
-[...feed.children].forEach(v=>observer.observe(v));
+},{threshold:.7});
+[...feed.children].forEach(v=>obs.observe(v));
 }
 
-/* SONIDO */
-function toggleSound(){
-muted=!muted;
-players.forEach(p=>{
-p.contentWindow.postMessage(
-`{"event":"command","func":"${muted?"mute":"unMute"}","args":""}`,"*"
-);
-});
+/* LABEL */
+function showAdLabel(){
+adLabel.style.display=feed.children[current].dataset.ad==="true"?"block":"none";
 }
 </script>
 
 </body>
 </html>
-
-
-
-
-
-
-
